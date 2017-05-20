@@ -6,8 +6,8 @@
 
 # Set main var defaults
 
-RELEASE="24"
-REVISION="3"
+RELEASE="25"
+REVISION="1"
 ARCH="x86_64"
 NAME="fedora-${ARCH}"
 REPOSITORY="fedora-32"
@@ -17,6 +17,7 @@ REPO_RPM="${BASE_URL}/${RELEASE}/${REVISION}/noarch/fedora-repos-${RELEASE}-${RE
 BUILD_SCRIPT="https://raw.githubusercontent.com/docker/docker/master/contrib/mkimage-yum.sh"
 BASE_GROUPS="Core"
 BASE_PKGS="base base-devel"
+TMP_DIR="${HOME}/docker-builds/fedora"
 
 
 usage() 
@@ -40,40 +41,6 @@ usage()
 
 }
 
-# Set ARCH, REVISION and release and release defaults
-while getopts ":a:g:n:p:r" opt; do
-	case $opt in
-
-		r)
-	    	RELEASE=$OPTARG
-		;;
-
-		a)
-	    	ARCH=$OPTARG
-	    	;;
-
-		n)
-	    	NAME=$OPTARG
-	    	;;
-
-		g)
-	    	BASE_GROUPS="$OPTARG"
-		;;
-
-		p)
-	    	BASE_PKGS="$OPTARG"
-		;;
-
-		\?)
-		echo "Invalid option: -$OPTARG"
-		usage
-		;;
-
-	esac
-done
-shift $((OPTIND - 1))
-
-
 push_image()
 {
 
@@ -83,7 +50,7 @@ push_image()
 	docker images | grep "${NAME}"
 	echo ""
 	
-	read -erp "Username: " DOCKER_ USERNAME
+	read -erp "Username: " DOCKER_USERNAME
 	read -erp "Image ID: " IMAGE_ID
 
 	if [[ -z "${TAG}" ]]; then
@@ -92,12 +59,12 @@ push_image()
 
 	fi
 
-	echo -e "\n==> Logging in and pushing image\n
+	echo -e "\n==> Logging in and pushing image\n"
 
 	# login and push image
 	docker login
-	docker tag "${IMAGE_ID}" ${DOCKER_ USERNAME}/${NAME}:${TAG}
-	docker push  ${DOCKER_ USERNAME}/${NAME
+	docker tag "${IMAGE_ID}" ${DOCKER_USERNAME}/${NAME}:${TAG}
+	docker push  ${DOCKER_USERNAME}/${NAME}
 
 }
 
@@ -124,7 +91,7 @@ build_image()
 
 	# Download required files
 
-	wget "${BUILD_SCRIPT}" -q -n --show-progress
+	wget "${BUILD_SCRIPT}" -q -nc --show-progress
 
 	# if this fails, use revision 1, whichi shoudl always exist
 
@@ -193,6 +160,39 @@ build_image()
 
 	fi
 }
+
+# Set ARCH, REVISION and release and release defaults
+while getopts ":a:g:n:p:r" opt; do
+	case $opt in
+
+		r)
+	    	RELEASE=$OPTARG
+		;;
+
+		a)
+	    	ARCH=$OPTARG
+	    	;;
+
+		n)
+	    	NAME=$OPTARG
+	    	;;
+
+		g)
+	    	BASE_GROUPS="$OPTARG"
+		;;
+
+		p)
+	    	BASE_PKGS="$OPTARG"
+		;;
+
+		\?)
+		echo "Invalid option: -$OPTARG"
+		usage
+		;;
+
+	esac
+done
+shift $((OPTIND - 1))
 
 # Start script
 build_image
