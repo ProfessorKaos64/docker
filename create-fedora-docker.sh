@@ -41,6 +41,14 @@ usage()
 
 }
 
+prereqs()
+{
+
+    # get what's needed if it isn't there
+    sudo dnf install -y cpio findutils xz wget || exit 1
+
+}
+
 push_image()
 {
 
@@ -79,7 +87,6 @@ build_image()
 
 		mkdir -p "${TMP_DIR}"
 
-
 	fi
 
 	# Set conf location
@@ -105,10 +112,23 @@ build_image()
 
 	chmod +x mkimage-yum.sh
 
+    # Get shortname for RPM
+    RPM_FILE=$(basename ${REPO_RPM})
+
 	# Extract and modify base source repos RPM
 	# See: http://www.cyberciti.biz/tips/how-to-extract-an-rpm-package-without-installing-it.html
 
-	rpm2cpio "${REPO_RPM}" | xz -d | cpio -idmv
+	if ! rpm2cpio "${RPM_FILE}" | cpio -idmv; then
+
+        echo -e "\nFailed to extract RPM!"
+        if [[ -f "${TMP_DIR}/${RPM_FILE}" ]]; then
+            echo -e "RPM found: '$(basename ${REPO_RPM})'"
+        else
+            echo -e "Could not locate RPM in ${TMP_DIR}"
+        fi
+        exit 1
+
+    fi
 
 	# Proceed as long as etc exists
 
@@ -132,8 +152,7 @@ build_image()
 
 		# Add the contents of the repo files to etc/dnf/dnf.conf
 		# mkimage-yum.sh only uses the base .conf file to build the repo information
-		find etc -name '*.repo' -exec cat {} >> "${DNF_CONF}" \;
-
+		find ${TMP_DIR}/etc -name '*.repo' -type f -exec cat {} >> "${DNF_CONF}/dnf.conf" \;
 
 	else
 
@@ -195,4 +214,5 @@ done
 shift $((OPTIND - 1))
 
 # Start script
+prereqs
 build_image
